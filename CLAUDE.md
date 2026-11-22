@@ -1,4 +1,4 @@
-# Excel (cartella e repository «foglio»)
+# Excel (cartella e repository «excel», prima «foglio»)
 
 ## Cos'è
 Foglio di calcolo nel browser chiamato «Excel»: celle, formule in italiano (engine.js), più fogli, formati; apre e scarica .xlsx (ExcelJS, xlsx-io.js).
@@ -7,9 +7,9 @@ Si usa anche come app per Mac (cartella `mac/`: `./mac/build.sh` crea e installa
 Le chiavi di salvataggio nel browser restano `foglio.cartella` e `foglio.preferenze` (non cambiarle: si perderebbero i dati salvati).
 
 ## Dove sta online
-Repository: https://github.com/nemesiMark/foglio (ramo `main`, pubblico).
-Online con GitHub Pages: https://nemesimark.github.io/foglio/ (si aggiorna a ogni push su main).
-Compare tra i lavori del sito Nemesi Web (~/Desktop/Sites/site-nemesi).
+Repository: https://github.com/nemesiMark/excel (ramo `main`, pubblico).
+Online con GitHub Pages: https://nemesimark.github.io/excel/ (si aggiorna a ogni push su main).
+Compare tra i lavori del sito Nemesi Web (~/Desktop/Sites/nemesiWeb).
 
 ## Come si prova in locale
 Basta aprire `index.html` nel browser (doppio clic), oppure `python3 -m http.server 8000` nella cartella.
