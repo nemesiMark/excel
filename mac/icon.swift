@@ -1,4 +1,4 @@
-// Disegna l'icona di Foglio (1024×1024) e la salva come PNG nel percorso indicato.
+// Disegna l'icona di Excel (1024×1024) e la salva come PNG nel percorso indicato.
 import Cocoa
 
 let size: CGFloat = 1024
@@ -21,24 +21,32 @@ shadow.set()
 NSColor(srgbRed: 0.07, green: 0.42, blue: 0.24, alpha: 1).setFill()
 shape.fill()
 NSGraphicsContext.restoreGraphicsState()
-let grad = NSGradient(starting: NSColor(srgbRed: 0.22, green: 0.72, blue: 0.43, alpha: 1),
-                      ending: NSColor(srgbRed: 0.06, green: 0.41, blue: 0.23, alpha: 1))!
-grad.draw(in: shape, angle: -90)
+// Sfumatura diagonale come il logo della pagina web (#21a366 → #085c36)
+let grad = NSGradient(starting: NSColor(srgbRed: 0x21/255, green: 0xa3/255, blue: 0x66/255, alpha: 1),
+                      ending: NSColor(srgbRed: 0x08/255, green: 0x5c/255, blue: 0x36/255, alpha: 1))!
+grad.draw(in: shape, angle: -45)
+let edge = NSBezierPath(roundedRect: rect.insetBy(dx: 8, dy: 8), xRadius: 177, yRadius: 177)
+edge.lineWidth = 16
+NSColor.white.withAlphaComponent(0.14).setStroke()
+edge.stroke()
 
-// Lettera E bianca al centro, nel carattere di sistema (SF) molto spesso
-let font = NSFont.systemFont(ofSize: 540, weight: .heavy)
-let letterShadow = NSShadow()
-letterShadow.shadowColor = NSColor.black.withAlphaComponent(0.22)
-letterShadow.shadowOffset = NSSize(width: 0, height: -8)
-letterShadow.shadowBlurRadius = 18
-let text = NSAttributedString(string: "E", attributes: [.font: font, .foregroundColor: NSColor.white])
-let ctx = NSGraphicsContext.current!.cgContext
-let line = CTLineCreateWithAttributedString(text)
-let ink = CTLineGetImageBounds(line, ctx)   // contorno reale della lettera, per centrarla
+// «E» fatta di celle staccate, con le stesse misure del logo web (griglia di 32 punti)
+let k = rect.width / 32
+func cell(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> NSBezierPath {
+  let r = NSRect(x: rect.minX + (x - 0.25) * k, y: rect.minY + (32 - y - h) * k, width: w * k, height: h * k)
+  return NSBezierPath(roundedRect: r, xRadius: 1.4 * k, yRadius: 1.4 * k)
+}
+let markShadow = NSShadow()
+markShadow.shadowColor = NSColor.black.withAlphaComponent(0.22)
+markShadow.shadowOffset = NSSize(width: 0, height: -8)
+markShadow.shadowBlurRadius = 18
 NSGraphicsContext.saveGraphicsState()
-letterShadow.set()
-ctx.textPosition = CGPoint(x: 512 - ink.midX, y: 512 - ink.midY)
-CTLineDraw(line, ctx)
+markShadow.set()
+NSColor.white.setFill()
+cell(9, 8, 4, 16).fill()
+cell(14.5, 8, 9, 4).fill()
+cell(14.5, 20, 9, 4).fill()
+cell(14.5, 14, 7, 4).fill()
 NSGraphicsContext.restoreGraphicsState()
 
 NSGraphicsContext.restoreGraphicsState()

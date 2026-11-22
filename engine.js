@@ -1,4 +1,4 @@
-/* Foglio — motore delle formule (sintassi italiana: SOMMA(A1:A3; 2,5)) */
+/* Excel — motore delle formule (sintassi italiana: SOMMA(A1:A3; 2,5)) */
 (function () {
   "use strict";
 
@@ -135,7 +135,7 @@
   }
   function refTok(word, sheet, prefix) {
     const m = REF_RE.exec(word);
-    return { t: "ref", sheet, prefix, ca: !!m[1], c: colIndex(m[2]), ra: !!m[3], r: parseInt(m[4], 10) - 1 };
+    return { t: "ref", text: prefix + word, sheet, prefix, ca: !!m[1], c: colIndex(m[2]), ra: !!m[3], r: parseInt(m[4], 10) - 1 };
   }
   function refText(t) { return (t.prefix || "") + (t.ca ? "$" : "") + colName(t.c) + (t.ra ? "$" : "") + (t.r + 1); }
 
@@ -430,8 +430,8 @@
   const FN = {
     SOMMA: (a) => { const v = flat(a); return isErr(v) ? v : v.reduce((s, x) => s + x, 0); },
     MEDIA: (a) => { const v = flat(a); return isErr(v) ? v : v.length ? v.reduce((s, x) => s + x, 0) / v.length : E.DIV0; },
-    MIN: (a) => { const v = flat(a); return isErr(v) ? v : v.length ? Math.min(...v) : 0; },
-    MAX: (a) => { const v = flat(a); return isErr(v) ? v : v.length ? Math.max(...v) : 0; },
+    MIN: (a) => { const v = flat(a); return isErr(v) ? v : v.length ? v.reduce((m, x) => (x < m ? x : m), Infinity) : 0; },
+    MAX: (a) => { const v = flat(a); return isErr(v) ? v : v.length ? v.reduce((m, x) => (x > m ? x : m), -Infinity) : 0; },
     PRODOTTO: (a) => { const v = flat(a); return isErr(v) ? v : v.reduce((s, x) => s * x, 1); },
     MEDIANA: (a) => {
       const v = flat(a); if (isErr(v)) return v; if (!v.length) return E.NUM;
@@ -469,7 +469,7 @@
     RESTO: (a) => { const x = num(a[0]), y = num(a[1]); if (firstErr(x, y)) return firstErr(x, y); if (y === 0) return E.DIV0; return x - y * Math.floor(x / y); },
     "PI.GRECO": () => Math.PI,
     CASUALE: () => Math.random(),
-    "CASUALE.TRA": (a) => { const x = num(a[0]), y = num(a[1]); return firstErr(x, y) || Math.floor(Math.random() * (Math.floor(y) - Math.ceil(x) + 1)) + Math.ceil(x); },
+    "CASUALE.TRA": (a) => { const x = num(a[0]), y = num(a[1]); if (firstErr(x, y)) return firstErr(x, y); if (Math.ceil(x) > Math.floor(y)) return E.NUM; return Math.floor(Math.random() * (Math.floor(y) - Math.ceil(x) + 1)) + Math.ceil(x); },
     OGGI: () => todaySerial(),
     ADESSO: () => { const t = new Date(); return todaySerial() + (t.getHours() * 3600 + t.getMinutes() * 60 + t.getSeconds()) / 86400; },
     ANNO: (a) => { const x = num(a[0]); return isErr(x) ? x : serialToDate(x).y; },
@@ -502,7 +502,7 @@
     CONFRONTA: (a) => {
       const want = a[0].scalar; const g = grid(a[1]); const type = a[2] ? num(a[2]) : 1;
       const list = g.length === 1 ? g[0] : g.map((r) => r[0]);
-      if (type === 0) { const i = list.findIndex((v) => compare(v, want) === 0); return i < 0 ? E.NA : i + 1; }
+      if (type === 0) { const eq = exactMatcher(want); const i = list.findIndex(eq); return i < 0 ? E.NA : i + 1; }
       let best = -1;
       for (let i = 0; i < list.length; i++) {
         if (list[i] === null) continue;
@@ -540,6 +540,14 @@
       return n;
     },
   };
+  // Uguaglianza per le ricerche esatte: nei testi valgono * e ? come caratteri jolly
+  function exactMatcher(want) {
+    if (typeof want === "string" && /[*?]/.test(want)) {
+      const re = new RegExp("^" + want.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$", "i");
+      return (v) => typeof v === "string" && re.test(v);
+    }
+    return (v) => compare(v, want) === 0;
+  }
   function lookup(a, horizontal) {
     const want = a[0].scalar;
     let g = grid(a[1]);
@@ -549,7 +557,7 @@
     const approx = a[3] ? toBool(a[3].scalar) !== false : true;
     if (idx < 1 || idx > (g[0] || []).length) return E.REF;
     let hit = -1;
-    if (!approx) hit = g.findIndex((r) => compare(r[0], want) === 0 && r[0] !== null);
+    if (!approx) { const eq = exactMatcher(want); hit = g.findIndex((r) => r[0] !== null && eq(r[0])); }
     else {
       for (let i = 0; i < g.length; i++) {
         if (g[i][0] === null) continue;
@@ -588,7 +596,7 @@
     if (m) {
       let y = parseInt(m[3], 10); if (y < 100) y += 2000;
       const mo = parseInt(m[2], 10), d = parseInt(m[1], 10);
-      if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return { value: dateToSerial(y, mo, d), hint: "date" };
+      if (mo >= 1 && mo <= 12 && d >= 1 && d <= new Date(Date.UTC(y, mo, 0)).getUTCDate()) return { value: dateToSerial(y, mo, d), hint: "date" };
     }
     const n = parseNumber(t);
     if (n !== null) return { value: n };
@@ -702,6 +710,7 @@
     MAX: "Il valore più grande. MAX(A1:A10)",
     "CONTA.NUMERI": "Quante celle contengono numeri",
     "CONTA.VALORI": "Quante celle non sono vuote",
+    "CONTA.VUOTE": "Quante celle sono vuote",
     "CONTA.SE": "Conta le celle che rispettano un criterio. CONTA.SE(A1:A10; \">5\")",
     "SOMMA.SE": "Somma le celle che rispettano un criterio. SOMMA.SE(A1:A10; \"Roma\"; B1:B10)",
     "MEDIA.SE": "Media delle celle che rispettano un criterio",
@@ -751,9 +760,57 @@
     "VAL.ERRORE": "VERO se è un errore",
   };
 
+
+  // Sintassi mostrata nei suggerimenti mentre si scrive la formula
+  const FUNCTION_SYNTAX = {
+    SOMMA: "SOMMA(num1; [num2]; …)", MEDIA: "MEDIA(num1; [num2]; …)", MIN: "MIN(num1; [num2]; …)", MAX: "MAX(num1; [num2]; …)",
+    PRODOTTO: "PRODOTTO(num1; [num2]; …)", MEDIANA: "MEDIANA(num1; [num2]; …)",
+    "CONTA.NUMERI": "CONTA.NUMERI(val1; [val2]; …)", "CONTA.VALORI": "CONTA.VALORI(val1; [val2]; …)", "CONTA.VUOTE": "CONTA.VUOTE(intervallo)",
+    SE: "SE(test; [se_vero]; [se_falso])", "SE.ERRORE": "SE.ERRORE(valore; valore_se_errore)",
+    E: "E(logico1; [logico2]; …)", O: "O(logico1; [logico2]; …)", NON: "NON(logico)",
+    ARROTONDA: "ARROTONDA(num; cifre)", "ARROTONDA.PER.ECC": "ARROTONDA.PER.ECC(num; cifre)", "ARROTONDA.PER.DIF": "ARROTONDA.PER.DIF(num; cifre)",
+    INT: "INT(num)", ASS: "ASS(num)", RADQ: "RADQ(num)", POTENZA: "POTENZA(num; potenza)", RESTO: "RESTO(dividendo; divisore)",
+    "PI.GRECO": "PI.GRECO()", CASUALE: "CASUALE()", "CASUALE.TRA": "CASUALE.TRA(minore; maggiore)",
+    OGGI: "OGGI()", ADESSO: "ADESSO()", ANNO: "ANNO(data)", MESE: "MESE(data)", GIORNO: "GIORNO(data)",
+    DATA: "DATA(anno; mese; giorno)", GIORNI: "GIORNI(data_fine; data_inizio)",
+    CONCATENA: "CONCATENA(testo1; [testo2]; …)", LUNGHEZZA: "LUNGHEZZA(testo)", MAIUSC: "MAIUSC(testo)", MINUSC: "MINUSC(testo)",
+    SINISTRA: "SINISTRA(testo; [num_caratt])", DESTRA: "DESTRA(testo; [num_caratt])",
+    "STRINGA.ESTRAI": "STRINGA.ESTRAI(testo; inizio; num_caratt)", "ANNULLA.SPAZI": "ANNULLA.SPAZI(testo)", VALORE: "VALORE(testo)",
+    "VAL.VUOTO": "VAL.VUOTO(valore)", "VAL.NUMERO": "VAL.NUMERO(valore)", "VAL.TESTO": "VAL.TESTO(valore)", "VAL.ERRORE": "VAL.ERRORE(valore)",
+    "CERCA.VERT": "CERCA.VERT(valore; tabella; indice; [intervallo])", "CERCA.ORIZZ": "CERCA.ORIZZ(valore; tabella; indice; [intervallo])",
+    INDICE: "INDICE(matrice; riga; [col])", CONFRONTA: "CONFRONTA(valore; matrice; [corrisp])",
+    "SOMMA.SE": "SOMMA.SE(intervallo; criterio; [int_somma])", "CONTA.SE": "CONTA.SE(intervallo; criterio)",
+    "MEDIA.SE": "MEDIA.SE(intervallo; criterio; [int_media])",
+    "SOMMA.PIÙ.SE": "SOMMA.PIÙ.SE(int_somma; int_crit1; crit1; …)", "CONTA.PIÙ.SE": "CONTA.PIÙ.SE(int_crit1; crit1; …)",
+  };
+
+  /* ---------- Suggerimenti mentre si scrive ---------- */
+  const fold = (t) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const SORTED = Object.keys(FN).sort((a, b) => a.localeCompare(b, "it"));
+  // Funzioni il cui nome inizia con quanto scritto (maiuscole e accenti non contano)
+  function suggest(prefix) {
+    const q = fold(prefix || "");
+    return SORTED.filter((n) => fold(n).startsWith(q));
+  }
+  // La parola che si sta scrivendo prima del cursore, se lì può andare il nome di una funzione
+  function wordAtCaret(text, caret) {
+    const lead = /^\s*=/.exec(text);
+    if (!lead || caret < lead[0].length) return null;
+    const before = text.slice(lead[0].length, caret);
+    if ((before.match(/"/g) || []).length % 2) return null; // dentro un testo tra virgolette
+    const m = /[\p{L}_][\p{L}\p{N}_.]*$/u.exec(before);
+    const word = m ? m[0] : "";
+    const start = caret - word.length;
+    const prev = text.slice(0, start).trimEnd().slice(-1);
+    if (!word) return before.trim() === "" ? { start, word } : null;
+    if (prev && !"=(;,+-*/^&<>".includes(prev)) return null;
+    if (start > 0 && /[\p{L}\p{N}_.$!']/u.test(text[start - 1])) return null;
+    return { start, word };
+  }
+
   window.Engine = {
     colName, colIndex, addr, parseAddr, isErr, parseInput, parseNumber, formatValue, formatGeneral,
     recalc, shiftFormula, adjustStructure, renameSheetRefs, toEnglish, toItalian, tokenize,
-    serialToDate, dateToSerial, FUNCTION_HELP, FUNCTIONS: Object.keys(FN),
+    serialToDate, dateToSerial, FUNCTION_HELP, FUNCTION_SYNTAX, FUNCTIONS: Object.keys(FN), suggest, wordAtCaret,
   };
 })();

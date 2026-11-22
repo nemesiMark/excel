@@ -1,4 +1,4 @@
-/* Foglio — foglio di calcolo */
+/* Excel — foglio di calcolo */
 (function () {
   "use strict";
 
@@ -81,15 +81,15 @@
     const s = book.sheets[0];
     const put = (a, v, st) => { s.cells[a] = { v }; if (st) s.cells[a].s = st; };
     put("A1", "Spese di novembre", { b: true, size: 14 });
-    put("A3", "Voce", { b: true, fill: "#dcefe3", bd: { b: "thin" } });
-    put("B3", "Importo", { b: true, fill: "#dcefe3", bd: { b: "thin" }, align: "right" });
+    put("A3", "Voce", { b: true, fill: "#e3f1e8", bd: { b: "thin" } });
+    put("B3", "Importo", { b: true, fill: "#e3f1e8", bd: { b: "thin" }, align: "right" });
     put("A4", "Affitto"); put("B4", "650", { fmt: "currency" });
     put("A5", "Spesa"); put("B5", "320,40", { fmt: "currency" });
     put("A6", "Bollette"); put("B6", "95,90", { fmt: "currency" });
     put("A7", "Totale", { b: true, bd: { t: "thin" } }); put("B7", "=SOMMA(B4:B6)", { b: true, fmt: "currency", bd: { t: "thin" } });
-    put("A9", "Scrivi nelle celle, usa formule come =SOMMA(B4:B6) e scarica il file .xlsx quando hai finito.", { i: true, color: "#5f6862" });
+    put("A9", "Scrivi = in una cella: compaiono le funzioni e, man mano che digiti, restano solo quelle che iniziano così. Poi scarica il file .xlsx.", { i: true, color: "#5d6661" });
     s.colW = { 0: 150, 1: 110 };
-    titleEl.value = "Benvenuto in Foglio";
+    titleEl.value = "Benvenuto in Excel";
   }
 
   /* ---------- Disegno della griglia ---------- */
@@ -348,6 +348,8 @@
     editorEl.hidden = false;
     handle.hidden = true;
     if (!fromBar) { editorEl.focus(); editorEl.setSelectionRange(editorEl.value.length, editorEl.value.length); }
+    acDismissed = null;
+    updateAssist();
   }
   function placeEditor() {
     const r = rectOf(sel.ar, sel.ac, sel.ar, sel.ac);
@@ -355,6 +357,7 @@
     const st = (cellAt(sel.ar, sel.ac) || {}).s || {};
     editorEl.style.fontSize = (st.size || 11) * zoomK() + "pt";
     editorEl.style.fontWeight = st.b ? "700" : "400";
+    editorEl.style.whiteSpace = st.wrap ? "pre-wrap" : "pre";
     editorEl.style.left = r.left - 1 + "px";
     editorEl.style.top = r.top - 1 + "px";
     editorEl.style.minWidth = r.width + 2 + "px";
@@ -374,13 +377,20 @@
     const val = editorEl.value;
     editing = false; refMode = null;
     editorEl.hidden = true;
-    clearRefHints();
+    clearRefHints(); hideAssist();
     const cell = cellAt(sel.ar, sel.ac);
     const old = cell && cell.v !== undefined ? rawForEdit(cell) : "";
     if (val !== old) {
       snapshot();
       let v = val;
       // =somma(a1:a3) → =SOMMA(A1:A3)
+      // come nei fogli di calcolo: chiude le virgolette e le parentesi rimaste aperte
+      if (v[0] === "=") {
+        if ((v.match(/"/g) || []).length % 2) v += '"';
+        const tk = En.tokenize(v.slice(1));
+        const open = tk.filter((t) => t.t === "lp").length - tk.filter((t) => t.t === "rp").length;
+        if (open > 0) v += ")".repeat(open);
+      }
       if (v[0] === "=") v = "=" + En.tokenize(v.slice(1)).map((t) => (t.pre || "") + (t.t === "fn" ? t.text.toUpperCase() : t.t === "ref" ? (t.prefix || "") + (t.ca ? "$" : "") + colName(t.c) + (t.ra ? "$" : "") + (t.r + 1) : t.text || "")).join("") ;
       setRaw(sel.ar, sel.ac, v);
       changed();
@@ -393,7 +403,7 @@
   function cancelEdit() {
     editing = false; refMode = null;
     editorEl.hidden = true;
-    clearRefHints();
+    clearRefHints(); hideAssist();
     handle.hidden = false;
     wrap.focus({ preventScroll: true });
     updateBar();
@@ -418,6 +428,7 @@
     (editFromBar ? editorEl : fbar).value = el.value;
     autosizeEditor();
     showRefHints();
+    updateAssist();
   }
   let hints = [];
   function clearRefHints() { hints.forEach((h) => h.remove()); hints = []; }
@@ -439,9 +450,10 @@
     }
   }
 
-  editorEl.addEventListener("input", () => { refMode = null; fbar.value = editorEl.value; autosizeEditor(); showRefHints(); });
+  editorEl.addEventListener("input", () => { refMode = null; fbar.value = editorEl.value; autosizeEditor(); showRefHints(); updateAssist(); });
   editorEl.addEventListener("keydown", (e) => {
     e.stopPropagation(); // i tasti dell'editor non devono arrivare alla griglia
+    if (assistKey(e)) return;
     if ((e.metaKey || e.ctrlKey) && ["s", "o", "f", "p"].includes(e.key.toLowerCase())) { commitEdit(); document.dispatchEvent(new KeyboardEvent("keydown", { key: e.key, metaKey: e.metaKey, ctrlKey: e.ctrlKey })); e.preventDefault(); return; }
     if (e.key === "Enter" && (e.altKey || e.ctrlKey)) {
       e.preventDefault();
@@ -471,8 +483,9 @@
   });
 
   fbar.addEventListener("focus", () => { if (!editing) startEdit(undefined, true); else editFromBar = true; });
-  fbar.addEventListener("input", () => { refMode = null; if (!editing) startEdit(fbar.value, true); editorEl.value = fbar.value; autosizeEditor(); showRefHints(); });
+  fbar.addEventListener("input", () => { refMode = null; if (!editing) startEdit(fbar.value, true); editorEl.value = fbar.value; autosizeEditor(); showRefHints(); updateAssist(); });
   fbar.addEventListener("keydown", (e) => {
+    if (assistKey(e)) return;
     if (e.key === "Enter") { e.preventDefault(); editorEl.value = fbar.value; commitEdit(1, 0); }
     else if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
     else if (e.key === "Tab") { e.preventDefault(); editorEl.value = fbar.value; commitEdit(0, 1); }
@@ -492,6 +505,121 @@
     if (pb) setRange(pa.r, pa.c, pb.r, pb.c);
     wrap.focus();
   });
+  /* ---------- Suggerimenti delle funzioni mentre si scrive ---------- */
+  // Dopo «=» compare l'elenco delle funzioni; scrivendo restano solo quelle che iniziano con le lettere digitate.
+  const acEl = $("acList"), tipEl = $("fnTip");
+  let ac = null, acDismissed = null;
+  const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]);
+  const shortHelp = (n) => (En.FUNCTION_HELP[n] || "").replace(/\.\s+[\p{Lu}.]+\(.*$/u, "");
+  const activeInput = () => (editFromBar ? fbar : editorEl);
+  function hideAc() { ac = null; acEl.hidden = true; }
+  function hideAssist() { hideAc(); tipEl.hidden = true; }
+  function updateAssist() {
+    if (!editing) return hideAssist();
+    const el = activeInput();
+    const pos = el.selectionStart;
+    const w = el.selectionEnd === pos && acDismissed !== el.value ? En.wordAtCaret(el.value, pos) : null;
+    const items = w && el.value[pos] !== "(" ? En.suggest(w.word) : [];
+    if (!items.length) hideAc();
+    else {
+      const keep = ac && ac.items[ac.i];
+      const i = Math.max(0, keep ? items.indexOf(keep) : 0);
+      ac = { start: w.start, word: w.word, items, i, moved: !!(ac && ac.moved && keep === items[i]) };
+      renderAc();
+    }
+    updateTip(el, pos);
+  }
+  function renderAc() {
+    const n = ac.word.length;
+    acEl.innerHTML =
+      `<div class="ac-head"><span>Funzioni</span><span>${ac.items.length}</span></div><div class="ac-items">` +
+      ac.items.map((f, i) => `<div class="ac-item" role="option" id="ac${i}" data-i="${i}" aria-selected="${i === ac.i}"><span class="ac-ic">fx</span><span class="ac-name"><b>${esc(f.slice(0, n))}</b>${esc(f.slice(n))}</span><span class="ac-desc">${esc(shortHelp(f))}</span></div>`).join("") +
+      `</div><div class="ac-foot"><code>${esc(En.FUNCTION_SYNTAX[ac.items[ac.i]] || ac.items[ac.i] + "()")}</code><span><kbd>Tab</kbd> inserisce</span></div>`;
+    acEl.hidden = false;
+    placeFloat(acEl, ac.start);
+    const cur = $("ac" + ac.i);
+    if (cur) cur.scrollIntoView({ block: "nearest" });
+  }
+  // Mette l'elenco sotto la parola che si sta scrivendo (sopra, se sotto non c'è spazio)
+  let measureCtx;
+  function placeFloat(box, charPos) {
+    const el = activeInput();
+    const r = el.getBoundingClientRect();
+    let x = r.left;
+    if (el === fbar) {
+      measureCtx = measureCtx || document.createElement("canvas").getContext("2d");
+      const cs = getComputedStyle(fbar);
+      measureCtx.font = cs.font;
+      x += parseFloat(cs.paddingLeft) + measureCtx.measureText(fbar.value.slice(0, charPos)).width - fbar.scrollLeft - 46;
+    }
+    const w = box.offsetWidth, h = box.offsetHeight;
+    box.style.left = Math.max(8, Math.min(x, innerWidth - w - 8)) + "px";
+    const below = r.bottom + 6;
+    box.style.top = (below + h > innerHeight - 8 && r.top - h - 6 > 8 ? r.top - h - 6 : below) + "px";
+  }
+  function acceptAc(i = ac.i) {
+    const el = activeInput();
+    const name = ac.items[i];
+    const noArgs = /\(\)$/.test(En.FUNCTION_SYNTAX[name] || "");
+    el.setRangeText(name + (noArgs ? "()" : "("), ac.start, el.selectionStart, "end");
+    hideAc();
+    el.focus();
+    el.dispatchEvent(new Event("input"));
+  }
+  function assistKey(e) {
+    if (!ac || acEl.hidden || e.isComposing) return false;
+    const k = e.key;
+    if (k === "ArrowDown" || k === "ArrowUp") {
+      ac.i = (ac.i + (k === "ArrowDown" ? 1 : -1) + ac.items.length) % ac.items.length;
+      ac.moved = true; renderAc();
+    } else if (k === "Tab" || (k === "Enter" && !e.altKey && !e.ctrlKey && !e.metaKey && (ac.word || ac.moved))) acceptAc();
+    else if (k === "Escape") { acDismissed = activeInput().value; hideAc(); }
+    else return false;
+    e.preventDefault(); e.stopPropagation();
+    return true;
+  }
+  acEl.addEventListener("mousedown", (e) => e.preventDefault());
+  acEl.addEventListener("click", (e) => { const it = e.target.closest(".ac-item"); if (it && ac) acceptAc(+it.dataset.i); });
+  acEl.addEventListener("mousemove", (e) => {
+    const it = e.target.closest(".ac-item");
+    if (!it || !ac || +it.dataset.i === ac.i) return;
+    acEl.querySelector('[aria-selected="true"]')?.setAttribute("aria-selected", "false");
+    it.setAttribute("aria-selected", "true");
+    ac.i = +it.dataset.i;
+    acEl.querySelector(".ac-foot code").textContent = En.FUNCTION_SYNTAX[ac.items[ac.i]] || "";
+  });
+  // Sintassi della funzione in cui si trova il cursore, con l'argomento attuale evidenziato
+  function updateTip(el, pos) {
+    if (ac || !editing) { tipEl.hidden = true; return; }
+    const lead = /^\s*=/.exec(el.value);
+    if (!lead) { tipEl.hidden = true; return; }
+    const toks = En.tokenize(el.value.slice(lead[0].length, pos));
+    const stack = [];
+    toks.forEach((t, i) => {
+      if (t.t === "lp") stack.push({ name: toks[i - 1] && toks[i - 1].t === "fn" ? toks[i - 1].v : null, arg: 0, at: i });
+      else if (t.t === "rp") stack.pop();
+      else if (t.t === "sep" && stack.length) stack[stack.length - 1].arg++;
+    });
+    const top = stack[stack.length - 1];
+    const syn = top && top.name && En.FUNCTION_SYNTAX[top.name];
+    if (!syn) { tipEl.hidden = true; return; }
+    const m = /^([^(]+)\((.*)\)$/.exec(syn);
+    const args = m[2] ? m[2].split("; ") : [];
+    let k = top.arg;
+    if (k >= args.length && args[args.length - 1] === "…") k = Math.max(0, args.length - 2);
+    tipEl.innerHTML = `<b>${esc(m[1])}</b>(` + args.map((a, i) => (i === k ? `<em>${esc(a)}</em>` : esc(a))).join("; ") + `)`;
+    tipEl.hidden = false;
+    let start = lead[0].length;
+    for (let i = 0; i < top.at; i++) start += (toks[i].pre || "").length + (toks[i].text || "").length;
+    placeFloat(tipEl, Math.max(lead[0].length, start - top.name.length));
+  }
+  for (const el of [editorEl, fbar]) {
+    el.addEventListener("keyup", (e) => { if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) updateAssist(); });
+    el.addEventListener("click", () => { if (editing) updateAssist(); });
+  }
+  wrap.addEventListener("scroll", () => { if (editing && (ac || !tipEl.hidden)) updateAssist(); });
+  addEventListener("resize", () => { if (editing) updateAssist(); });
+
   function ensureSize(rows, cols) {
     const s = sheet();
     if (rows <= s.nRows && cols <= s.nCols) return;

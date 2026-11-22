@@ -1,4 +1,4 @@
-// Foglio per macOS — finestra nativa che contiene l'editor (cartella "web" nelle risorse dell'app).
+// Excel per macOS — finestra nativa che contiene l'editor (cartella "web" nelle risorse dell'app).
 import Cocoa
 import WebKit
 import UniformTypeIdentifiers
@@ -30,7 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1360, height: 880),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable],
                           backing: .buffered, defer: false)
-        window.title = "Foglio"
+        window.title = "Excel"
         window.minSize = NSSize(width: 720, height: 500)
         window.collectionBehavior = [.fullScreenPrimary]
         window.contentView = webView
@@ -198,14 +198,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             top.submenu = m; main.addItem(top); return top
         }
 
-        _ = submenu("Foglio", [
-            item("Informazioni su Foglio", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
+        _ = submenu("Excel", [
+            item("Informazioni su Excel", #selector(NSApplication.orderFrontStandardAboutPanel(_:))),
             .separator(),
-            item("Nascondi Foglio", #selector(NSApplication.hide(_:)), "h"),
+            item("Nascondi Excel", #selector(NSApplication.hide(_:)), "h"),
             item("Nascondi altre", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option]),
             item("Mostra tutte", #selector(NSApplication.unhideAllApplications(_:))),
             .separator(),
-            item("Esci da Foglio", #selector(NSApplication.terminate(_:)), "q"),
+            item("Esci da Excel", #selector(NSApplication.terminate(_:)), "q"),
         ])
         _ = submenu("File", [
             item("Nuovo", #selector(cmdNew), "n", target: self),

@@ -3,9 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Foglio</title>
-<meta name="description" content="Foglio, un foglio di calcolo che apre e salva file .xlsx.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%2331b26a'/%3E%3Cstop offset='1' stop-color='%23126b3c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='7' fill='url(%23g)'/%3E%3Ctext x='16' y='23.5' text-anchor='middle' font-family='-apple-system,system-ui,sans-serif' font-weight='800' font-size='20' fill='%23fff'%3EE%3C/text%3E%3C/svg%3E">
+<title>Excel</title>
+<meta name="description" content="Excel, un foglio di calcolo nel browser che apre e salva file .xlsx.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2321a366'/%3E%3Cstop offset='1' stop-color='%23085c36'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cg fill='%23fff'%3E%3Crect x='9' y='8' width='4' height='16' rx='1.4'/%3E%3Crect x='14.5' y='8' width='9' height='4' rx='1.4'/%3E%3Crect x='14.5' y='14' width='7' height='4' rx='1.4' /%3E%3Crect x='14.5' y='20' width='9' height='4' rx='1.4'/%3E%3C/g%3E%3C/svg%3E">
+<meta name="theme-color" content="#f3f4f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111312" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -49,7 +51,15 @@
 </svg>
 
 <header class="topbar">
-  <div class="brand" aria-hidden="true">E</div>
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+      <defs><linearGradient id="brandG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#21a366"/><stop offset="1" stop-color="#085c36"/></linearGradient></defs>
+      <rect width="32" height="32" rx="8" fill="url(#brandG)" stroke="none"/>
+      <rect x=".5" y=".5" width="31" height="31" rx="7.5" fill="none" stroke="#fff" stroke-opacity=".18"/>
+      <g fill="#fff" stroke="none"><rect x="9" y="8" width="4" height="16" rx="1.4"/><rect x="14.5" y="8" width="9" height="4" rx="1.4"/><rect x="14.5" y="14" width="7" height="4" rx="1.4"/><rect x="14.5" y="20" width="9" height="4" rx="1.4"/></g>
+    </svg>
+    <span class="brand-name">Excel</span>
+  </div>
   <div class="quick">
     <button class="qb" id="btnUndo" title="Annulla (⌘Z)"><svg><use href="#i-undo"/></svg></button>
     <button class="qb" id="btnRedo" title="Ripeti (⌘⇧Z)"><svg><use href="#i-redo"/></svg></button>
@@ -315,6 +325,9 @@
   <input id="fnSearch" class="fn-search" placeholder="Cerca una funzione" aria-label="Cerca una funzione">
   <div id="fnList" class="fn-list"></div>
 </div>
+
+<div class="ac" id="acList" role="listbox" aria-label="Funzioni suggerite" hidden></div>
+<div class="fn-tip" id="fnTip" role="tooltip" hidden></div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div id="printArea" class="print-area" aria-hidden="true"></div>

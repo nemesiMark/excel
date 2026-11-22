@@ -1,4 +1,4 @@
-/* Foglio — lettura e scrittura dei file .xlsx (con ExcelJS) */
+/* Excel — lettura e scrittura dei file .xlsx (con ExcelJS) */
 (function () {
   "use strict";
   const En = window.Engine;
@@ -36,11 +36,21 @@
 
   async function write(book, calc, title) {
     const wb = new window.ExcelJS.Workbook();
-    wb.creator = "Foglio";
+    wb.creator = "Excel";
     wb.title = title || "";
+    // Nomi dei fogli validi per i file .xlsx: al massimo 31 caratteri, niente * ? : \ / [ ], tutti diversi
+    const used = new Set();
+    const names = book.sheets.map((s, i) => {
+      const base = (s.name.replace(/[*?:\\/[\]]/g, "-").replace(/^'+|'+$/g, "").trim() || "Foglio" + (i + 1)).slice(0, 31);
+      let n = base, k = 2;
+      while (used.has(n.toLowerCase())) { const suf = " (" + k++ + ")"; n = base.slice(0, 31 - suf.length) + suf; }
+      used.add(n.toLowerCase());
+      return n;
+    });
+    const fixRefs = (f) => book.sheets.reduce((acc, s, i) => (s.name !== names[i] ? En.renameSheetRefs(acc, s.name, names[i]) : acc), f);
     book.sheets.forEach((s, si) => {
       const views = (s.freezeRow || s.freezeCol) ? [{ state: "frozen", xSplit: s.freezeCol ? 1 : 0, ySplit: s.freezeRow ? 1 : 0 }] : [];
-      const ws = wb.addWorksheet(s.name.slice(0, 31), { views });
+      const ws = wb.addWorksheet(names[si], { views });
       let maxC = 0;
       for (const [k, cell] of Object.entries(s.cells)) {
         const p = En.parseAddr(k);
@@ -53,7 +63,7 @@
           if (typeof raw === "string" && raw[0] === "=" && raw.length > 1) {
             let result = calc.get(si, p.r, p.c);
             if (En.isErr(result)) result = { error: ERR_EN[result.e] || "#VALUE!" };
-            xc.value = { formula: En.toEnglish(raw), result: result === null ? undefined : result };
+            xc.value = { formula: En.toEnglish(fixRefs(raw)), result: result === null ? undefined : result };
           } else if (st.fmt === "text" && typeof raw === "string") {
             xc.value = raw;
           } else {
@@ -114,7 +124,6 @@
     await wb.xlsx.load(buffer);
     const sheets = [];
     wb.worksheets.forEach((ws) => {
-      if (ws.state && ws.state !== "visible") return;
       const s = { name: ws.name, cells: {}, nRows: Math.max(200, ws.rowCount + 50), nCols: Math.max(26, ws.columnCount + 2), colW: {}, freezeRow: false, freezeCol: false };
       ws.eachRow({ includeEmpty: false }, (row, rn) => {
         row.eachCell({ includeEmpty: false }, (xc, cn) => {
