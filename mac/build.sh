@@ -19,7 +19,7 @@ swiftc -O -target arm64-apple-macos12 \
   "$MAC/main.swift" -o "$APP/Contents/MacOS/Excel"
 
 echo "→ Copio l'editor"
-cp "$ROOT/index.html" "$ROOT/style.css" "$ROOT/app.js" "$ROOT/engine.js" "$ROOT/xlsx-io.js" "$APP/Contents/Resources/web/"
+cp "$ROOT/index.html" "$ROOT/style.css" "$ROOT/app.js" "$ROOT/engine.js" "$ROOT/xlsx-io.js" "$ROOT/installa.js" "$APP/Contents/Resources/web/"
 cp "$ROOT/vendor/"*.js "$APP/Contents/Resources/web/vendor/"
 cp "$MAC/Info.plist" "$APP/Contents/Info.plist"
 

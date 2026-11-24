@@ -21,6 +21,11 @@ Test automatici (motore formule, suggerimenti, salvataggio/apertura .xlsx): `nod
 - `test/` — test con Node (`engine.test.js`, `xlsx.test.js`)
 - `mac/` — involucro Swift/WebKit per l'app Mac (`mac/build/` escluso da git)
 
+
+## App installabile (PWA)
+- `manifest.webmanifest`, `sw.js` (copia dei file per l'uso senza rete; cache `nemesi-excel-N`: **alzare `VERSIONE` in `sw.js` e aggiornare `FILE` quando si aggiungono o rinominano file**), `icone/` (`icona.svg` → PNG 180/192/512 a tutto quadrato), `installa.js` (uguale nelle quattro app di Nemesi Web: registra `sw.js` e con `?installa` nell'indirizzo mostra il riquadro per installare).
+- Il portfolio Nemesi Web porta a `…/?installa` con il link «Installa».
+
 ## Regole di lavoro
 - Testi in italiano.
 - Commit solo su richiesta; «g» = commit e push su `origin main` (prima `node --test test/`).
