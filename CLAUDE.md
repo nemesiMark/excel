@@ -23,8 +23,7 @@ Test automatici (motore formule, suggerimenti, salvataggio/apertura .xlsx): `nod
 
 
 ## App installabile (PWA)
-- `manifest.webmanifest`, `sw.js` (copia dei file per l'uso senza rete; cache `nemesi-excel-N`: **alzare `VERSIONE` in `sw.js` e aggiornare `FILE` quando si aggiungono o rinominano file**), `icone/` (`icona.svg` → PNG 180/192/512 a tutto quadrato), `installa.js` (uguale nelle quattro app di Nemesi Web: registra `sw.js` e con `?installa` nell'indirizzo mostra il riquadro per installare). Nel manifest `id` dev'essere `"/excel/"` (con `"./"` diventa la radice di nemesimark.github.io per tutte le app: Chrome le scambia per la stessa app e installarne una sovrascrive l'altra).
-- Il portfolio Nemesi Web porta a `…/?installa` con il link «Installa».
+- Regole comuni alle quattro app di Nemesi Web in `~/Documents/work/Apps/CLAUDE.md`. Qui: cache `nemesi-excel-N` in `sw.js`, `id` del manifest `"/excel/"`.
 
 ## Regole di lavoro
 - Testi in italiano.
