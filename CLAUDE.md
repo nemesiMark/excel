@@ -9,7 +9,7 @@ Le chiavi di salvataggio nel browser restano `foglio.cartella` e `foglio.prefere
 ## Dove sta online
 Repository: https://github.com/nemesiMark/excel (ramo `main`, pubblico).
 Online con GitHub Pages: https://nemesimark.github.io/excel/ (si aggiorna a ogni push su main).
-Compare tra i lavori del sito Nemesi Web (~/Desktop/Sites/nemesiWeb).
+Compare tra i lavori del sito Nemesi Web (~/Documents/work/Sites/nemesiWeb).
 
 ## Come si prova in locale
 Basta aprire `index.html` nel browser (doppio clic), oppure `python3 -m http.server 8000` nella cartella.
